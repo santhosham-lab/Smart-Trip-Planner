@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartTrip Planner: route, time and budget</title>
+<style>
+:root{--bg:#eef2ee;--card:#fff;--ink:#14201a;--mut:#5b6b62;--br:#d5ded8;--ac:#0b6b3a;--on:#fff;--hl:#f2b705;--soft:#e3f1e8;color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1511;--card:#17211b;--ink:#e6efe9;--mut:#9bb0a3;--br:#2a3a30;--ac:#3ddc84;--on:#06210f;--hl:#f2b705;--soft:#1b3125;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1511;--card:#17211b;--ink:#e6efe9;--mut:#9bb0a3;--br:#2a3a30;--ac:#3ddc84;--on:#06210f;--hl:#f2b705;--soft:#1b3125;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header,main{max-width:1000px;margin:auto;padding:0 16px}
+header{padding-top:26px}
+h1{margin:0;font-size:28px;letter-spacing:-.5px}
+header p{margin:4px 0 12px;color:var(--mut);max-width:62ch}
+main{display:grid;gap:16px;padding-bottom:40px}
+.card{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:16px}
+h2{font-size:17px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px;font-weight:600}
+input,select,button{font:inherit;color:var(--ink)}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--br);border-radius:8px;background:var(--bg)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+button{cursor:pointer;border:0;border-radius:8px;padding:10px 16px;background:var(--ac);color:var(--on);font-weight:700}
+button.g{background:var(--soft);color:var(--ink);border:1px solid var(--br)}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row input{flex:1;min-width:180px}
+.chip{display:inline-flex;gap:8px;align-items:center;background:var(--soft);border:1px solid var(--br);border-radius:99px;padding:5px 6px 5px 12px;margin:8px 6px 0 0}
+.chip button{padding:0 8px;background:none;color:var(--mut);font-size:18px;line-height:1}
+.mut{color:var(--mut)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.stat{border:1px solid var(--br);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-size:21px;letter-spacing:-.3px}.stat span{font-size:12px;color:var(--mut)}
+.stat.big{background:var(--ac);color:var(--on);border-color:var(--ac)}.stat.big span{color:inherit;opacity:.85}
+.sign{background:var(--ac);color:var(--on);border:3px solid var(--card);outline:2px solid var(--ac);border-radius:10px;padding:14px 16px;font-size:17px;line-height:1.9}
+.sign small{background:var(--hl);color:#241c00;border-radius:5px;padding:1px 7px;margin:0 6px;font-weight:700;font-size:12px;white-space:nowrap}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 8px;border-bottom:1px solid var(--br);text-align:left;white-space:nowrap}
+td.w{white-space:normal;min-width:220px}th{color:var(--mut);font-size:12px}
+tr.sel td{background:var(--soft)}
+.tag{background:var(--hl);color:#241c00;border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700;margin-left:4px}
+.bar{height:8px;background:var(--soft);border-radius:9px;overflow:hidden;min-width:90px}.bar i{display:block;height:100%;background:var(--ac)}
+.day{border-left:3px solid var(--ac);padding:0 0 0 12px;margin:0 0 14px}.day p{margin:3px 0}
+.ok{color:var(--ac);font-weight:700}.bad{color:#d33;font-weight:700}
+ul{margin:0;padding-left:20px}li{margin:4px 0}
+#msg{color:#d33;min-height:20px;font-size:13px;margin-top:6px}
+@media print{.np{display:none}body{background:#fff;color:#000}.card{break-inside:avoid}}
+[hidden]{display:none!important}a{color:var(--ac)}.sign a{color:inherit}#msg{color:var(--mut)}#msg.bad{color:#d33}
+</style>
+</head>
+<body>
+<header>
+<h1>SmartTrip Planner</h1>
+<p>Type where you start and where you’re going. The planner finds the road route, picks overnight halts and places worth a stop, and builds a day-by-day plan with a full budget in ₹.</p>
+</header>
+<main>
+<section class="card np">
+<h2>Your trip</h2>
+<div class="grid">
+<div><label for="from">Starting point</label><input id="from" placeholder="e.g. Hyderabad" autocomplete="off"></div>
+<div><label for="to">Destination</label><input id="to" placeholder="e.g. Goa" autocomplete="off"></div>
+<div><label for="ret">Trip type</label><select id="ret"><option value="1">Round trip</option><option value="0">One way</option></select></div>
+<div><label for="days">Trip length (days)</label><input id="days" type="number" min="1" max="30" value="6"></div>
+<div><label for="n">Travellers</label><input id="n" type="number" min="1" max="20" value="2"></div>
+<div><label for="bud">Maximum budget (₹, whole trip)</label><input id="bud" type="number" min="0" step="1000" placeholder="e.g. 50000"></div>
+</div>
+</section>
+<section class="card np">
+<h2>How you travel</h2>
+<div class="grid">
+<div><label for="mode">Mode of transport</label><select id="mode"><option value="car">Own car</option><option value="bike">Bike</option><option value="cab">Cab with driver</option><option value="bus">Bus</option><option value="train">Train</option><option value="flight">Flight</option></select></div>
+<div data-m="car bike"><label for="mil">Mileage (km per litre)</label><input id="mil" type="number" min="3" max="60" value="15"></div>
+<div data-m="car bike"><label for="fuel">Fuel price (₹ per litre)</label><input id="fuel" type="number" min="50" max="200" value="105"></div>
+<div data-m="cab"><label for="rate">Cab rate (₹ per km)</label><input id="rate" type="number" min="5" max="60" value="13"></div>
+<div data-m="bus train flight"><label for="tk">Ticket price per person, one way (₹)</label><input id="tk" type="number" min="0" placeholder="Empty = estimate"></div>
+<div><label for="style">Travel style</label><select id="style"><option value="-1">Auto: best that fits my budget</option><option value="0">Backpacker</option><option value="1">Standard</option><option value="2">Comfort</option><option value="3">Luxury</option></select></div>
+<div><label for="pace">Pace</label><select id="pace"><option value="r">Relaxed</option><option value="b" selected>Balanced</option><option value="p">Packed</option></select></div>
+<div><label for="int">Interests</label><select id="int"><option value="any">A bit of everything</option><option value="heritage">Heritage and culture</option><option value="nature">Nature and outdoors</option><option value="spiritual">Spiritual</option></select></div>
+</div>
+<div class="row" style="margin-top:14px"><button id="go" type="button">Plan my trip</button><button id="ex" type="button" class="g">Try the example</button></div>
+<div id="msg" role="status"></div>
+</section>
+<div id="out"><div class="card mut">Enter a starting point and destination, then choose Plan my trip.</div></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+const hm=h=>{const m=Math.round(h*60);return Math.floor(m/60)+"h "+String(m%60).padStart(2,"0")+"m"};
+const tm=h=>{h=((h%24)+24)%24;let H=Math.floor(h),m=Math.round((h-H)*60);if(m===60){H++;m=0}H%=24;return ((H%12)||12)+":"+String(m).padStart(2,"0")+(H<12?" AM":" PM")};
+const hav=(a,b)=>{const r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lon-a.lon)*r,x=Math.sin(dl/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)**2;return 12742*Math.asin(Math.sqrt(x))};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const jget=async u=>{const r=await fetch(u);if(!r.ok)throw Error("HTTP "+r.status);return r.json()};
+const msg=(t,bad)=>{$("msg").textContent=t;$("msg").className=bad?"bad":""};
+const key=()=>$("from").value.trim().toLowerCase()+"|"+$("to").value.trim().toLowerCase();
+const IC={car:"🚗",bike:"🏍️",cab:"🚕",bus:"🚌",train:"🚆",flight:"✈️"},MN={car:"Own car",bike:"Bike",cab:"Cab",bus:"Bus",train:"Train",flight:"Flight"};
+const T=[{n:"Backpacker",stay:900,food:350,act:150,loc:300,b:1.1,t:.55,f:1},{n:"Standard",stay:2200,food:700,act:350,loc:500,b:1.5,t:1,f:1.1},{n:"Comfort",stay:4500,food:1200,act:700,loc:800,b:2,t:1.7,f:1.5},{n:"Luxury",stay:9000,food:2200,act:1400,loc:1500,b:2.8,t:2.5,f:2.4}];
+const PACE={r:{h:6,p:2,s:1,dep:7},b:{h:8,p:3,s:1,dep:6},p:{h:10,p:4,s:2,dep:6}},SL=[9.5,11.5,15,17];
+const BAD=/school|college|universit|institut|hospital|railway|station|airport|stadium|constituen|assembly|mandal|taluk|district|tehsil|census|police|prison|bank|limited|junction|airline|cinema|mall|hotel|panchayat|highway/i;
+const KW={any:/fort|palace|temple|museum|monument|tomb|mosque|church|cathedral|ruin|heritage|cave|stepwell|mahal|haveli|shrine|lake|waterfall|falls|national park|sanctuary|wildlife|beach|hill|valley|dam|garden|peak|island|viewpoint|zoo|backwater|monastery|gurdwara|ashram|memorial|bazaar|park/i,
+heritage:/fort|palace|temple|museum|monument|tomb|mosque|church|cathedral|ruin|heritage|cave|stepwell|mahal|haveli|memorial|historic|archaeolog/i,
+nature:/lake|waterfall|falls|national park|sanctuary|wildlife|beach|hill|valley|dam|garden|peak|island|viewpoint|zoo|backwater|forest|reserve|park/i,
+spiritual:/temple|mosque|church|cathedral|shrine|gurdwara|monastery|ashram|dargah|basilica|math\b/i};
+let D=null,nt=0;
+/* live lookups: OpenStreetMap Nominatim (places), OSRM (road route), Wikipedia (sights) */
+async function geo(q){const a=await jget(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=en&q=${encodeURIComponent(q)}`);
+ if(!a.length)throw Error(`Couldn’t find “${q}”. Try adding the state or country.`);const x=a[0];return{name:esc(x.name||x.display_name.split(",")[0]),lat:+x.lat,lon:+x.lon}}
+async function rt(a,b){try{const j=await jget(`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=simplified&geometries=geojson`);const r=j.routes[0];return{km:r.distance/1000,dur:r.duration/3600,coords:r.geometry.coordinates,ok:1}}
+ catch(e){const km=hav(a,b)*1.3;return{km,dur:km/70,coords:[[a.lon,a.lat],[b.lon,b.lat]],ok:0}}}
+async function near(p){try{const j=await jget(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggscoord=${p.lat}%7C${p.lon}&ggsradius=10000&ggslimit=50&prop=coordinates%7Cdescription%7Cpageviews&colimit=50&desclimit=50&pvipdays=30`);
+ return Object.values((j.query||{}).pages||{}).filter(x=>x.coordinates).map(x=>({t:esc(x.title),lat:x.coordinates[0].lat,lon:x.coordinates[0].lon,v:Object.values(x.pageviews||{}).reduce((s,n)=>s+(n||0),0),d:esc(x.description||"")}))}catch(e){return[]}}
+function along(c,f){const p=c.map(x=>({lat:x[1],lon:x[0]})),cum=[0];for(let i=1;i<p.length;i++)cum.push(cum[i-1]+hav(p[i-1],p[i]));
+ const t=cum[cum.length-1]*f;let i=1;while(i<cum.length-1&&cum[i]<t)i++;const s=Math.min(1,Math.max(0,(t-cum[i-1])/((cum[i]-cum[i-1])||1)));
+ return{lat:p[i-1].lat+(p[i].lat-p[i-1].lat)*s,lon:p[i-1].lon+(p[i].lon-p[i-1].lon)*s}}
+async function load(){
+ const f=$("from").value.trim(),t=$("to").value.trim();if(!f||!t){msg("Enter both a starting point and a destination.",1);return}
+ $("go").disabled=true;
+ try{msg("Finding your locations…");const a=await geo(f);await sleep(1100);const b=await geo(t);
+  msg(`Found ${a.name} and ${b.name}. Getting the road route…`);
+  const R=await rt(a,b),ns=Math.min(10,Math.max(2,Math.round(R.km/90)));
+  msg("Looking up places worth visiting…");
+  const pts=Array.from({length:ns},(_,i)=>({f:(i+.5)/ns,...along(R.coords,(i+.5)/ns)})),offs=[[0,0],[.16,0],[-.16,0],[0,.16],[0,-.16]];
+  const res=await Promise.all([...pts.map(near),...offs.map(o=>near({lat:b.lat+o[0],lon:b.lon+o[1]}))]);
+  const seen=new Set(),dest=[];res.slice(ns).flat().forEach(p=>{if(!seen.has(p.t)){seen.add(p.t);p.dd=hav(p,b);dest.push(p)}});
+  D={key:key(),from:a,to:b,route:R,air:hav(a,b),samples:pts.map((p,i)=>({km:p.f*R.km,list:res[i]})),dest};
+  msg(R.ok?"":"Road routing was unavailable, so distances are estimated from the straight line.",1);show()}
+ catch(e){msg(/^Couldn/.test(e.message)?e.message:`Couldn’t reach the map services (${e.message}). Inside Claude’s preview these lookups are blocked. Open the page from GitHub Pages or from your computer, or try the example.`,1)}
+ $("go").disabled=false}
+const SAMPLE=()=>{const a={name:"Hyderabad",lat:17.385,lon:78.487},b={name:"Goa",lat:15.4989,lon:73.8278},P=(t,lat,lon,v,d)=>({t,lat,lon,v,d,dd:hav({lat,lon},b)});
+ return{key:"hyderabad|goa",sample:1,from:a,to:b,air:hav(a,b),route:{km:760,dur:12.5,ok:1,coords:[[78.487,17.385],[77.35,16.2],[76.4,15.27],[75.12,15.36],[74.5,15.85],[73.83,15.5]]},
+ samples:[{km:270,list:[P("Raichur Fort",16.2108,77.3473,1500,"fort in Karnataka, India")]},{km:420,list:[P("Virupaksha Temple",15.335,76.462,12000,"temple in Hampi, India"),P("Vittala Temple",15.3433,76.475,11000,"temple in Hampi, India"),P("Tungabhadra Dam",15.267,76.338,3000,"dam in Karnataka, India")]},{km:600,list:[P("Belgaum Fort",15.8569,74.5124,1800,"fort in Belagavi, India"),P("Kamal Basti",15.8575,74.513,900,"Jain temple in Belagavi, India")]}],
+ dest:[P("Basilica of Bom Jesus",15.5009,73.9116,9000,"church in Old Goa, India"),P("Se Cathedral",15.5036,73.9122,5000,"cathedral in Old Goa, India"),P("Fort Aguada",15.4925,73.7737,7000,"fort in Goa, India"),P("Calangute Beach",15.5439,73.7553,6000,"beach in Goa, India"),P("Baga Beach",15.5553,73.7517,6500,"beach in Goa, India"),P("Anjuna Beach",15.5736,73.7413,4000,"beach in Goa, India"),P("Chapora Fort",15.605,73.7358,4500,"fort in Goa, India"),P("Dudhsagar Falls",15.3144,74.3143,8000,"waterfall in Goa, India"),P("Fontainhas",15.4977,73.8316,2500,"historic neighbourhood in Panaji, India"),P("Dona Paula",15.4535,73.804,2000,"beach and viewpoint in Goa, India"),P("Miramar Beach",15.4818,73.8083,2500,"beach in Panaji, India"),P("Reis Magos Fort",15.5086,73.8147,2200,"fort in Goa, India"),P("Mangueshi Temple",15.4486,73.9822,2600,"temple in Goa, India"),P("Palolem Beach",15.01,74.0232,5500,"beach in Goa, India")]}};
+const sc=(p,P)=>{const s=p.t+" "+p.d;if(BAD.test(s))return -1;let x=Math.log10(1+p.v)*2;if(KW.any.test(s))x+=2;if(P.int!=="any"&&KW[P.int].test(s))x+=3;if(/village|town|city|locality|suburb/i.test(p.d)&&!KW.any.test(s))x-=3;return x};
+const same=p=>[D.from.name,D.to.name].some(n=>n.toLowerCase()===p.t.toLowerCase());
+const rank=(l,P)=>{const seen=new Set();return l.filter(p=>!same(p)&&!seen.has(p.t)&&seen.add(p.t)).map(p=>({...p,s:sc(p,P)})).filter(p=>p.s>0).sort((a,b)=>b.s-a.s)};
+const lk=p=>`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.t)}" target="_blank" rel="noopener">${p.t}</a>`;
+function plan(P,mode,tier){
+ const R=D.route,k1=R.km,rt=P.ret?2:1,L=T[tier],n=P.n,A=PACE[P.pace],v4=Math.ceil(n/4);let m=mode,fb=0;
+ if(m==="flight"&&D.air<250){m="bus";fb=1}
+ const road=m==="car"||m==="bike"||m==="cab";
+ const hrs=m==="bike"?R.dur*1.55:road?R.dur*1.2:m==="bus"?R.dur*1.35+.5:m==="train"?k1*1.1/58+1:D.air/750+3;
+ const dd=Math.max(1,Math.ceil(hrs/(road?A.h:16))),seg=hrs/dd;
+ let S=P.days-dd*rt;const short=S<1;if(short)S=1;const days=dd*rt+S,nights=days-1;
+ const top=rank(D.dest,P).slice(0,S*A.p),left=top.slice(),groups=[];
+ while(left.length){const g=[left.shift()];while(g.length<A.p&&left.length){const l=g[g.length-1];let bi=0,bd=1e9;left.forEach((p,i)=>{const d=hav(l,p);if(d<bd){bd=d;bi=i}});g.push(left.splice(bi,1)[0])}groups.push(g)}
+ const used=new Set(),LS=[];
+ if(road)for(let r=0;r<rt;r++){const row=[];for(let d=0;d<dd;d++){const a=d/dd*k1-1,b=(d+1)/dd*k1+1;
+  const c=rank(D.samples.filter(s=>s.km>=a&&s.km<=b).flatMap(s=>s.list.map(p=>({...p,km:s.km}))),P).filter(p=>!used.has(p.t)&&hav(p,D.from)>12&&hav(p,D.to)>12).slice(0,A.s);
+  c.forEach(p=>used.add(p.t));row.push(c)}LS.push(row)}
+ const Dy=[];let dn=0;
+ const halt=k=>{const q=along(R.coords,k/dd);return`Overnight halt <span class="halt" data-lat="${q.lat.toFixed(3)}" data-lon="${q.lon.toFixed(3)}">at about ${Math.round(k/dd*k1)} km from ${D.from.name}</span>`};
+ const trav=(d,out,stops)=>{const fr=out?D.from.name:D.to.name,to=out?D.to.name:D.from.name,last=d===dd-1,st=d?7:A.dep,arr=st+seg+stops.length*1.25,x=[];
+  x.push(road?`${IC[m]} ${d?"Continue":"Leave "+fr} at ${tm(st)}. Drive about ${hm(seg)}${last?" to "+to:" towards the next halt"}, with a short break every 2 to 3 hours.`:`${IC[m]} ${MN[m]} from ${fr} to ${to}: about ${hm(seg)}${m==="flight"?" door to door, airport time included":""}. Book tickets early.`);
+  stops.forEach(p=>x.push(`📸 Stop: ${lk(p)}${p.d?", "+p.d:""} (about 1 hour)`));
+  if(road)x.push(`⏱️ Expect to arrive around ${tm(arr)}.${arr>20?" That is late. Choose a Relaxed pace or fewer stops.":""}`);
+  x.push(last?(out?`📍 Check in at ${to}, relax and take an evening walk.`:`🏁 Back home in ${to}.`):`🛏️ ${halt(out?d+1:dd-1-d)}.`);
+  Dy.push({t:`Day ${++dn}: ${last?`${fr} → ${to}`:`On the road to ${to}`}`,x})};
+ for(let d=0;d<dd;d++)trav(d,true,(LS[0]||[])[d]||[]);
+ for(let i=0;i<S;i++){const g=groups[i]||[],x=[];
+  g.forEach((p,j)=>{x.push(`⏰ ${tm(SL[j])} ${lk(p)}${p.dd>12?` (day trip, ${Math.round(p.dd)} km away)`:""}${p.d?": "+p.d:""}`);if(j===1||(j===0&&g.length===1))x.push(`🍽️ ${tm(13.5)} Lunch break: try the local speciality.`)});
+  if(!g.length)x.push("🌿 Free day: local markets, a café stop and rest. No more well-known places were found nearby.");
+  if(i===S-1)x.push(rt>1?"🧳 Pack up. Tomorrow you head home.":"🏁 Trip ends. Check out.");
+  Dy.push({t:`Day ${++dn}: Exploring ${D.to.name}`,x})}
+ if(rt>1)for(let d=0;d<dd;d++)trav(d,false,(LS[1]||[])[dd-1-d]||[]);
+ const far=top.filter(p=>p.dd>12).reduce((s,p)=>s+2.6*p.dd,0),tkm=k1*rt+days*35+far;
+ let fuel=0,cab=0,toll=0,fare=0,local=0;
+ const mil=m===P.mode?P.mil:m==="car"?15:40,rate=m===P.mode?P.rate:13;
+ if(m==="car"||m==="bike"){const v=m==="car"?v4:Math.ceil(n/2);fuel=tkm/mil*P.fuel*v;toll=m==="car"?(k1*rt*1.1+days*100)*v:days*50*v}
+ else if(m==="cab"){cab=(tkm*rate+nights*400)*v4;toll=(k1*rt*1.1+days*100)*v4}
+ else{const u=m===P.mode&&P.tk?P.tk:m==="bus"?Math.max(150,k1*L.b):m==="train"?Math.max(100,k1*L.t):(2300+3.6*D.air)*L.f;fare=u*n*rt;local=L.loc*v4*days}
+ const stay=nights*Math.ceil(n/2)*L.stay,food=days*n*L.food,act=days*n*L.act,sub=fuel+cab+toll+fare+local+stay+food+act,misc=sub*.08;
+ return{m,fb,short,hrs,days,nights,Dy,stops:(LS[0]||[]).flat(),tr:fuel+cab+toll+fare+local,total:sub+misc,
+  items:[["⛽ Fuel",fuel],["🚕 Cab hire (driver included)",cab],["🛣️ Tolls and parking",toll],["🎫 Tickets",fare],["🛺 Local cabs and autos",local],["🏨 Stay",stay],["🍽️ Food",food],["🎟️ Entry fees and activities",act],["🧾 Contingency (8%)",misc]].filter(x=>x[1]>0)}}
+const getP=()=>({days:Math.max(1,+$("days").value||1),n:Math.max(1,+$("n").value||1),ret:$("ret").value==="1",bud:+$("bud").value||0,mode:$("mode").value,mil:+$("mil").value||15,fuel:+$("fuel").value||105,rate:+$("rate").value||13,tk:+$("tk").value||0,style:+$("style").value,pace:$("pace").value,int:$("int").value});
+function pick(P){if(P.style>=0)return P.style;if(!P.bud)return 1;let b=0;for(let i=0;i<4;i++)if(plan(P,P.mode,i).total<=P.bud)b=i;return b}
+function show(){
+ const P=getP(),t=pick(P),r=plan(P,P.mode,t),L=T[t],hasP=D.dest.length||D.samples.some(s=>s.list.length),over=P.bud?r.total-P.bud:0;
+ const cmp=Object.keys(MN).map(m=>({m,r:plan(P,m,t)})),cheap=Math.min(...cmp.map(x=>x.r.total)),fast=Math.min(...cmp.map(x=>x.r.hrs));
+ const ch=[[D.from.name,""],...r.stops.map(p=>[p.t,"km "+Math.round(p.km)]),[D.to.name,"km "+Math.round(D.route.km)]];if(P.ret)ch.push([D.from.name,"return"]);
+ const rooms=Math.ceil(P.n/2);
+ let h=`<section class="card"><h2>${D.from.name} → ${D.to.name}</h2><div class="stats">
+ <div class="stat big"><b>${inr(r.total)}</b><span>Total trip cost</span></div>
+ <div class="stat"><b>${inr(r.total/P.n)}</b><span>Per person</span></div>
+ <div class="stat"><b>${Math.round(D.route.km).toLocaleString("en-IN")} km</b><span>One-way road distance</span></div>
+ <div class="stat"><b>${hm(r.hrs)}</b><span>One way by ${MN[r.m].toLowerCase()}</span></div>
+ <div class="stat"><b>${r.days} days</b><span>${r.nights} nights, ${rooms} room${rooms>1?"s":""}</span></div>
+ ${P.bud?`<div class="stat"><b class="${over>0?"bad":"ok"}">${inr(Math.abs(over))}</b><span>${over>0?"over":"under"} your budget</span></div>`:""}</div>
+ <p>Style: <b>${L.n}</b>${P.style<0?` (picked automatically${P.bud?", the best that fits your budget":""})`:""}. Pace: <b>${{r:"Relaxed",b:"Balanced",p:"Packed"}[P.pace]}</b>.</p>
+ ${r.short?`<p class="bad">${P.days} days is too short for this route by ${MN[r.m].toLowerCase()}. The plan uses the minimum of ${r.days} days.</p>`:""}
+ ${r.fb?'<p class="bad">Flights aren’t practical under 250 km, so a bus was used.</p>':""}
+ ${hasP?"":'<p class="bad">No places could be loaded, so this plan has the route and budget only.</p>'}</section>
+ <section class="card"><h2>Route and stops</h2><div class="sign">${ch.map(([n,k],i)=>(i?`<small>${k}</small>`:"")+`<b>${n}</b>`).join(" ")}</div>
+ <p class="mut">${r.stops.length?"Stops are well-known places close to your road, chosen by popularity.":"Stops along the way are shown for road trips of about 100 km or more."} <a href="https://www.google.com/maps/dir/${encodeURIComponent(D.from.name)}/${encodeURIComponent(D.to.name)}" target="_blank" rel="noopener">Open the route in Google Maps</a></p></section>
+ <section class="card"><h2>Budget breakdown</h2><div class="tw"><table><tr><th>Item</th><th>Amount</th><th>Share</th><th></th></tr>
+ ${r.items.map(([k,v])=>`<tr><td>${k}</td><td>${inr(v)}</td><td>${Math.round(v/r.total*100)}%</td><td><div class="bar"><i style="width:${v/r.total*100}%"></i></div></td></tr>`).join("")}
+ <tr><td><b>Total</b></td><td><b>${inr(r.total)}</b></td><td></td><td></td></tr></table></div>
+ <p class="mut">Stay assumes ${rooms} double-occupancy room${rooms>1?"s":""} at ${inr(L.stay)} per night. Food is ${inr(L.food)} per person per day.</p></section>
+ <section class="card"><h2>Compare transport modes</h2><div class="tw"><table><tr><th>Mode</th><th>One-way time</th><th>Days</th><th>Transport cost</th><th>Total trip cost</th><th>Per person</th></tr>
+ ${cmp.map(({m,r:x})=>`<tr class="${m===P.mode?"sel":""}"><td>${IC[m]} ${MN[m]}${x.fb?"*":""}${x.total===cheap?'<span class="tag">Cheapest</span>':""}${x.hrs===fast?'<span class="tag">Fastest</span>':""}</td><td>${hm(x.hrs)}</td><td>${x.days}</td><td>${inr(x.tr)}</td><td>${inr(x.total)}</td><td>${inr(x.total/P.n)}</td></tr>`).join("")}</table></div>
+ <p class="mut">Your selected mode is highlighted. Other modes use typical rates. * Flights need over 250 km, so a bus is used.</p></section>
+ <section class="card"><h2>Day-by-day plan</h2>${r.Dy.map(d=>`<div class="day"><b>${d.t}</b>${d.x.map(x=>`<p>${x}</p>`).join("")}</div>`).join("")}</section>`;
+ const tp=["Start long drives at 5:30 to 6:30 AM to cross cities before traffic and reach before dark.","Costs use typical Indian rates for fuel, tolls, hotels and food. Check live fares, tolls and opening hours before you go.","Route and halts come from OpenStreetMap. Places come from Wikipedia, ranked by how often people read about them."];
+ if(over>0){const lo=plan(P,P.mode,0).total;tp.unshift(`You are ${inr(over)} over budget. ${lo>P.bud?`Even the Backpacker style costs ${inr(lo)}, so try fewer days, Bus or Train, or a shorter route.`:`The Backpacker style costs ${inr(lo)} and fits.`}`)}
+ const ck=cmp.find(x=>x.r.total===cheap);if(ck.m!==P.mode)tp.push(`The cheapest mode for this trip is ${MN[ck.m]} at ${inr(cheap)}.`);
+ h+=`<section class="card"><h2>Tips</h2><ul>${tp.map(x=>`<li>${x}</li>`).join("")}</ul><p class="np"><button type="button" onclick="window.print()">Print or save as PDF</button></p></section>`;
+ $("out").innerHTML=h;nameHalts()}
+const HC={};
+async function nameHalts(){const k0=++nt;if(D.sample)return;
+ for(const el of document.querySelectorAll(".halt")){const k=el.dataset.lat+","+el.dataset.lon;
+  if(HC[k]===undefined){try{await sleep(1100);if(k0!==nt)return;const a=(await jget(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=en&lat=${el.dataset.lat}&lon=${el.dataset.lon}`)).address||{};HC[k]=esc(a.city||a.town||a.village||a.county||a.state_district||a.state||"")}catch(e){HC[k]=""}}
+  if(HC[k]&&el.isConnected)el.textContent="near "+HC[k]}}
+function sync(){const m=$("mode").value;document.querySelectorAll("[data-m]").forEach(e=>e.hidden=!e.dataset.m.split(" ").includes(m));
+ if(m==="bike"&&$("mil").value==15)$("mil").value=40;if(m==="car"&&$("mil").value==40)$("mil").value=15}
+$("go").onclick=load;
+["from","to"].forEach(i=>$(i).onkeydown=e=>{if(e.key==="Enter")load()});
+$("ex").onclick=()=>{$("from").value="Hyderabad";$("to").value="Goa";$("days").value=6;$("n").value=2;$("bud").value=45000;D=SAMPLE();msg("Showing built-in sample data (approximate). Live lookups run when this page is opened online.");sync();show()};
+document.querySelectorAll("input,select").forEach(e=>{if(e.id!=="from"&&e.id!=="to")e.addEventListener("input",()=>{sync();if(D&&D.key===key())show()})});
+sync();
+</script>
+</body>
+</html>
